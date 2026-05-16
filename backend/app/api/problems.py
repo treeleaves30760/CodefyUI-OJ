@@ -61,9 +61,12 @@ async def list_problems(
     db: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_active_user),
 ):
+    is_practice = get_settings().app_mode == "practice"
     stmt = select(Problem).order_by(Problem.created_at.desc())
     if published_only or _student_visible_only(user):
         stmt = stmt.where(Problem.published.is_(True))
+    if is_practice:
+        stmt = stmt.where(Problem.practice_visible.is_(True))
     result = await db.execute(stmt)
     return list(result.scalars().all())
 
@@ -76,6 +79,8 @@ async def get_problem(
 ):
     problem = await _get_problem_or_404(slug, db)
     if not problem.published and _student_visible_only(user):
+        raise HTTPException(status_code=404, detail="Problem not found")
+    if get_settings().app_mode == "practice" and not problem.practice_visible:
         raise HTTPException(status_code=404, detail="Problem not found")
     return problem
 
@@ -160,6 +165,8 @@ async def download_template(
 ):
     problem = await _get_problem_or_404(slug, db)
     if not problem.published and _student_visible_only(user):
+        raise HTTPException(status_code=404, detail="Problem not found")
+    if get_settings().app_mode == "practice" and not problem.practice_visible:
         raise HTTPException(status_code=404, detail="Problem not found")
     return problem.starter_template_json
 

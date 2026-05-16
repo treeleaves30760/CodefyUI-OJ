@@ -1,6 +1,6 @@
 from collections.abc import AsyncGenerator
 
-from fastapi import Depends
+from fastapi import Depends, HTTPException, status
 from fastapi_users import BaseUserManager, FastAPIUsers, IntegerIDMixin
 from fastapi_users.authentication import (
     AuthenticationBackend,
@@ -8,9 +8,10 @@ from fastapi_users.authentication import (
     JWTStrategy,
 )
 from fastapi_users.db import SQLAlchemyUserDatabase
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import get_settings
+from app.config import PRACTICE_USER_EMAIL, get_settings
 from app.db import get_async_session
 from app.models.user import User
 
@@ -57,5 +58,40 @@ auth_backend = AuthenticationBackend(
 
 fastapi_users = FastAPIUsers[User, int](get_user_manager, [auth_backend])
 
-current_active_user = fastapi_users.current_user(active=True)
-current_superuser = fastapi_users.current_user(active=True, superuser=True)
+
+async def _practice_user_dependency(
+    session: AsyncSession = Depends(get_async_session),
+) -> User:
+    """Resolve every request as the shared practice user (no auth)."""
+    result = await session.execute(
+        select(User).where(User.email == PRACTICE_USER_EMAIL)
+    )
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="practice user not provisioned",
+        )
+    return user
+
+
+def _resolve_current_active_user():
+    if get_settings().app_mode == "practice":
+        return _practice_user_dependency
+    return fastapi_users.current_user(active=True)
+
+
+def _resolve_current_superuser():
+    if get_settings().app_mode == "practice":
+        async def _denied() -> User:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="superuser endpoints disabled in practice mode",
+            )
+
+        return _denied
+    return fastapi_users.current_user(active=True, superuser=True)
+
+
+current_active_user = _resolve_current_active_user()
+current_superuser = _resolve_current_superuser()

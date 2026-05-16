@@ -16,6 +16,7 @@ class ProblemBase(BaseModel):
     time_limit_seconds: int = Field(default=60, ge=1, le=600)
     memory_limit_mb: int = Field(default=2048, ge=64, le=16384)
     published: bool = False
+    practice_visible: bool = False
 
 
 class ProblemCreate(ProblemBase):
@@ -33,6 +34,7 @@ class ProblemUpdate(BaseModel):
     time_limit_seconds: int | None = Field(default=None, ge=1, le=600)
     memory_limit_mb: int | None = Field(default=None, ge=64, le=16384)
     published: bool | None = None
+    practice_visible: bool | None = None
 
 
 class ProblemRead(ProblemBase):
@@ -56,5 +58,6 @@ class ProblemListItem(BaseModel):
     difficulty: ProblemDifficulty
     tags: list[str]
     published: bool
+    practice_visible: bool
     has_test_data: bool
     created_at: datetime

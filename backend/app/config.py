@@ -1,8 +1,12 @@
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+AppMode = Literal["competition", "practice"]
 
 
 class Settings(BaseSettings):
@@ -37,6 +41,22 @@ class Settings(BaseSettings):
 
     submission_max_bytes: int = 1_000_000
     submission_rate_per_minute: int = 6
+
+    # Deployment mode.
+    #   competition: full multi-user system with auth, contests, admin setup.
+    #   practice:    single shared practice user, no login, no contests.
+    app_mode: AppMode = "competition"
+
+    # Optional one-shot admin bootstrap for competition mode.
+    # When all three are set on first boot (and no admin exists), an admin is
+    # created automatically. Useful for k8s deployments / containerized installs.
+    bootstrap_admin_email: str | None = None
+    bootstrap_admin_password: str | None = None
+    bootstrap_admin_display_name: str = "Admin"
+
+
+PRACTICE_USER_EMAIL = "practice@codefyui.local"
+PRACTICE_USER_DISPLAY_NAME = "Practice"
 
 
 @lru_cache

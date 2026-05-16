@@ -42,6 +42,7 @@ class Problem(Base):
     time_limit_seconds: Mapped[int] = mapped_column(Integer, default=60, nullable=False)
     memory_limit_mb: Mapped[int] = mapped_column(Integer, default=2048, nullable=False)
     published: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    practice_visible: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_by_user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id"), index=True, nullable=False,
     )
