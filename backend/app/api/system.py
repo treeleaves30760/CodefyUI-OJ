@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi_users.exceptions import UserAlreadyExists
 from pydantic import BaseModel, EmailStr, Field
@@ -5,6 +7,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
+from app.core.permissions import require_admin
 from app.core.security import UserManager, get_user_manager
 from app.db import get_async_session
 from app.models.problem import Problem
@@ -12,6 +15,7 @@ from app.models.user import User, UserRole
 from app.schemas.user import UserCreate, UserRead
 
 router = APIRouter()
+log = logging.getLogger("oj.system")
 
 
 class SystemStatus(BaseModel):
@@ -104,4 +108,36 @@ async def setup_first_admin(
     session.add(user)
     await session.commit()
     await session.refresh(user)
+
+    # Baseline problem/contest seeding is run at app startup, but on first boot
+    # there is no admin yet so it is skipped. Now that an owner exists, kick it
+    # off so the new admin lands on a populated dashboard instead of an empty
+    # problem catalog. Failure here is non-fatal — the admin is already created.
+    try:
+        from app.seeding.runner import seed as run_seed
+
+        await run_seed()
+    except Exception:  # noqa: BLE001
+        log.exception("post-setup seeding failed; admin can re-trigger via /api/system/seed")
+
     return user
+
+
+@router.post("/seed", status_code=status.HTTP_204_NO_CONTENT)
+async def reseed_baseline(
+    session: AsyncSession = Depends(get_async_session),
+    _admin: User = Depends(require_admin),
+) -> None:
+    """Idempotently re-run the baseline seed. Admin-only escape hatch for the
+    case where the startup seeder ran before any admin existed and the system
+    is left with no problems."""
+    admin_count = await _count_admins(session)
+    if admin_count == 0:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="cannot seed before an admin exists — call /api/system/setup first",
+        )
+
+    from app.seeding.runner import seed as run_seed
+
+    await run_seed()
