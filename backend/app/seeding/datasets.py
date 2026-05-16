@@ -192,10 +192,329 @@ def warmup_passthrough_dataset() -> tuple[str, str, str]:
     )
 
 
+# -----------------------------------------------------------------------------
+# Extended seed dataset library
+#
+# Each generator below uses a unique random seed so re-runs produce identical
+# CSVs, and class centers are spaced far enough apart that the suggested model
+# (KNN / LogisticRegression / SVM / LinearRegression) clears the threshold.
+# Regression targets are produced by ``coefficients · features + intercept +
+# gaussian noise`` so a plain LinearRegression saturates the score.
+# -----------------------------------------------------------------------------
+
+
+def _linear_regression_dataset(
+    *,
+    seed: int,
+    headers: list[str],
+    target_header: str,
+    coefs: list[float],
+    intercept: float,
+    feature_ranges: list[tuple[float, float]],
+    noise_std: float,
+    n_train: int,
+    n_test: int,
+) -> tuple[str, str, str]:
+    rng = random.Random(seed)
+    train_rows: list[list[object]] = []
+    test_feature_rows: list[list[object]] = []
+    test_label_rows: list[list[object]] = []
+
+    def synth_row() -> tuple[list[float], float]:
+        x = [rng.uniform(lo, hi) for lo, hi in feature_ranges]
+        y = intercept + sum(c * v for c, v in zip(coefs, x)) + rng.gauss(0.0, noise_std)
+        return x, y
+
+    for _ in range(n_train):
+        x, y = synth_row()
+        train_rows.append([*x, y])
+    for _ in range(n_test):
+        x, y = synth_row()
+        test_feature_rows.append(list(x))
+        test_label_rows.append([y])
+
+    rng.shuffle(train_rows)
+    paired = list(zip(test_feature_rows, test_label_rows))
+    rng.shuffle(paired)
+    test_feature_rows = [p[0] for p in paired]
+    test_label_rows = [p[1] for p in paired]
+
+    return (
+        _to_csv([*headers, target_header], train_rows),
+        _to_csv(headers, test_feature_rows),
+        _to_csv([target_header], test_label_rows),
+    )
+
+
+# --- Classification (extra) --------------------------------------------------
+
+
+def fruit_basket_dataset() -> tuple[str, str, str]:
+    """3-class fruit identification — apples, oranges, bananas."""
+    rng = random.Random(10)
+    classes = [
+        ("apple",  [160.0, 0.85, 0.20], [10.0, 0.05, 0.04]),
+        ("orange", [200.0, 0.50, 0.75], [15.0, 0.07, 0.05]),
+        ("banana", [120.0, 0.15, 0.90], [12.0, 0.05, 0.04]),
+    ]
+    return _classification_split(
+        rng,
+        ["weight_g", "red_score", "yellow_score"],
+        "fruit",
+        classes,
+        n_train_per_class=40,
+        n_test_per_class=15,
+    )
+
+
+def coin_balance_dataset() -> tuple[str, str, str]:
+    """Binary fair / biased coin from session stats."""
+    rng = random.Random(11)
+    classes = [
+        ("fair",   [0.50, 0.50, 4.0], [0.04, 0.04, 1.2]),
+        ("biased", [0.78, 0.22, 9.0], [0.05, 0.05, 2.0]),
+    ]
+    return _classification_split(
+        rng,
+        ["heads_ratio", "tails_ratio", "max_streak"],
+        "coin_type",
+        classes,
+        n_train_per_class=60,
+        n_test_per_class=20,
+    )
+
+
+def weather_rain_dataset() -> tuple[str, str, str]:
+    """Binary rain / no-rain prediction from a few weather sensors."""
+    rng = random.Random(12)
+    classes = [
+        ("dry",  [28.0, 45.0, 1018.0], [3.5, 7.0, 3.0]),
+        ("rain", [19.0, 86.0, 1003.0], [3.0, 5.5, 3.5]),
+    ]
+    return _classification_split(
+        rng,
+        ["temperature_c", "humidity_pct", "pressure_hpa"],
+        "weather",
+        classes,
+        n_train_per_class=60,
+        n_test_per_class=20,
+    )
+
+
+def seed_variety_dataset() -> tuple[str, str, str]:
+    """3-class seed kernel classification (Kama / Rosa / Canadian-like)."""
+    rng = random.Random(13)
+    classes = [
+        ("kama",     [14.5, 14.2, 15.1, 0.88], [0.6, 0.4, 0.5, 0.02]),
+        ("rosa",     [18.0, 16.0, 18.5, 0.91], [0.8, 0.5, 0.6, 0.02]),
+        ("canadian", [11.8, 13.0, 12.8, 0.84], [0.5, 0.4, 0.4, 0.02]),
+    ]
+    return _classification_split(
+        rng,
+        ["length", "width", "perimeter", "compactness"],
+        "variety",
+        classes,
+        n_train_per_class=50,
+        n_test_per_class=20,
+    )
+
+
+def mushroom_edible_dataset() -> tuple[str, str, str]:
+    """Binary mushroom edibility — well separated clusters so KNN works."""
+    rng = random.Random(14)
+    classes = [
+        ("edible",    [6.0, 8.0, 0.15, 0.20], [1.2, 1.5, 0.05, 0.07]),
+        ("poisonous", [9.5, 4.5, 0.80, 0.85], [1.5, 1.4, 0.07, 0.08]),
+    ]
+    return _classification_split(
+        rng,
+        ["cap_cm", "stem_cm", "gill_dark_score", "odor_pungent_score"],
+        "edible_flag",
+        classes,
+        n_train_per_class=70,
+        n_test_per_class=25,
+    )
+
+
+def diabetes_screen_dataset() -> tuple[str, str, str]:
+    """Binary diabetes screening from glucose / BMI / age / BP / insulin."""
+    rng = random.Random(15)
+    classes = [
+        ("negative", [95.0,  24.0, 32.0,  75.0, 80.0],  [12.0, 2.5, 8.0, 7.0, 18.0]),
+        ("positive", [165.0, 33.0, 47.0,  92.0, 165.0], [18.0, 3.5, 9.0, 9.0, 30.0]),
+    ]
+    return _classification_split(
+        rng,
+        ["glucose", "bmi", "age", "blood_pressure", "insulin"],
+        "diabetes_label",
+        classes,
+        n_train_per_class=70,
+        n_test_per_class=25,
+    )
+
+
+def fish_species_dataset() -> tuple[str, str, str]:
+    """3-class freshwater fish species by length / weight / fin ratio."""
+    rng = random.Random(16)
+    classes = [
+        ("bream",  [32.0, 700.0, 0.40], [3.0, 90.0, 0.03]),
+        ("perch",  [22.0, 250.0, 0.55], [2.5, 50.0, 0.04]),
+        ("pike",   [55.0, 1100.0, 0.30], [4.0, 150.0, 0.03]),
+    ]
+    return _classification_split(
+        rng,
+        ["length_cm", "weight_g", "fin_ratio"],
+        "species",
+        classes,
+        n_train_per_class=40,
+        n_test_per_class=15,
+    )
+
+
+def credit_approval_dataset() -> tuple[str, str, str]:
+    """Binary credit-approval — moderately overlapping clusters."""
+    rng = random.Random(17)
+    classes = [
+        ("approve", [85.0, 0.20, 6.5, 5.5, 0.3], [18.0, 0.07, 2.0, 2.0, 0.6]),
+        ("deny",    [40.0, 0.55, 1.8, 1.2, 2.4], [12.0, 0.10, 1.2, 0.9, 0.9]),
+    ]
+    return _classification_split(
+        rng,
+        ["income_k", "debt_ratio", "credit_history_years", "employed_years", "defaults"],
+        "decision",
+        classes,
+        n_train_per_class=70,
+        n_test_per_class=25,
+    )
+
+
+def student_pass_dataset() -> tuple[str, str, str]:
+    """Binary pass / fail from study habits and prior performance."""
+    rng = random.Random(18)
+    classes = [
+        ("fail", [3.5, 60.0, 55.0, 0.45], [1.5, 12.0, 9.0, 0.15]),
+        ("pass", [9.0, 92.0, 82.0, 0.92], [2.0, 5.0, 8.0, 0.05]),
+    ]
+    return _classification_split(
+        rng,
+        ["study_hours_per_week", "attendance_pct", "prev_grade", "assignments_done_ratio"],
+        "result",
+        classes,
+        n_train_per_class=60,
+        n_test_per_class=20,
+    )
+
+
+def stellar_type_dataset() -> tuple[str, str, str]:
+    """3-class stellar classification (dwarf / main / giant)."""
+    rng = random.Random(19)
+    classes = [
+        ("dwarf",          [0.30, 3.5,  0.30, 0.40], [0.10, 0.6, 0.08, 0.10]),
+        ("main_sequence",  [1.00, 5.7,  1.05, 1.00], [0.15, 0.5, 0.12, 0.10]),
+        ("giant",          [2.20, 4.2,  3.50, 8.50], [0.30, 0.5, 0.40, 1.20]),
+    ]
+    return _classification_split(
+        rng,
+        ["brightness_norm", "log_temperature", "mass_solar", "radius_solar"],
+        "stellar_type",
+        classes,
+        n_train_per_class=40,
+        n_test_per_class=15,
+    )
+
+
+# --- Regression (extra) ------------------------------------------------------
+
+
+def car_price_dataset() -> tuple[str, str, str]:
+    return _linear_regression_dataset(
+        seed=20,
+        headers=["age_years", "mileage_km10k", "engine_l", "horsepower"],
+        target_header="price_k",
+        coefs=[-1.2, -0.9, 4.5, 0.20],
+        intercept=22.0,
+        feature_ranges=[(0.0, 12.0), (0.5, 18.0), (1.0, 4.5), (60.0, 320.0)],
+        noise_std=1.2,
+        n_train=90,
+        n_test=30,
+    )
+
+
+def salary_experience_dataset() -> tuple[str, str, str]:
+    return _linear_regression_dataset(
+        seed=21,
+        headers=["years_experience", "education_years", "certifications"],
+        target_header="salary_k",
+        coefs=[3.2, 2.4, 1.5],
+        intercept=18.0,
+        feature_ranges=[(0.0, 25.0), (10.0, 22.0), (0.0, 8.0)],
+        noise_std=2.0,
+        n_train=80,
+        n_test=30,
+    )
+
+
+def crop_yield_dataset() -> tuple[str, str, str]:
+    return _linear_regression_dataset(
+        seed=22,
+        headers=["rainfall_mm", "avg_temp_c", "fertilizer_kg", "soil_quality"],
+        target_header="yield_tons",
+        coefs=[0.015, 0.30, 0.08, 1.10],
+        intercept=2.0,
+        feature_ranges=[(150.0, 900.0), (12.0, 32.0), (10.0, 120.0), (0.0, 10.0)],
+        noise_std=0.6,
+        n_train=80,
+        n_test=30,
+    )
+
+
+def electricity_demand_dataset() -> tuple[str, str, str]:
+    return _linear_regression_dataset(
+        seed=23,
+        headers=["hour", "temperature_c", "day_of_week", "is_holiday"],
+        target_header="demand_mw",
+        coefs=[1.2, 2.1, 0.5, -3.5],
+        intercept=120.0,
+        feature_ranges=[(0.0, 23.0), (-5.0, 35.0), (0.0, 6.0), (0.0, 1.0)],
+        noise_std=2.5,
+        n_train=100,
+        n_test=30,
+    )
+
+
+def solar_output_dataset() -> tuple[str, str, str]:
+    return _linear_regression_dataset(
+        seed=24,
+        headers=["sunlight_kwm2", "panel_efficiency", "temperature_c", "cloud_cover"],
+        target_header="output_kwh",
+        coefs=[35.0, 22.0, -0.25, -8.5],
+        intercept=4.0,
+        feature_ranges=[(0.2, 1.0), (0.10, 0.25), (5.0, 40.0), (0.0, 1.0)],
+        noise_std=0.8,
+        n_train=80,
+        n_test=30,
+    )
+
+
 __all__ = [
     "iris_like_dataset",
     "wine_like_dataset",
     "churn_like_dataset",
     "housing_like_dataset",
     "warmup_passthrough_dataset",
+    "fruit_basket_dataset",
+    "coin_balance_dataset",
+    "weather_rain_dataset",
+    "seed_variety_dataset",
+    "mushroom_edible_dataset",
+    "diabetes_screen_dataset",
+    "fish_species_dataset",
+    "credit_approval_dataset",
+    "student_pass_dataset",
+    "stellar_type_dataset",
+    "car_price_dataset",
+    "salary_experience_dataset",
+    "crop_yield_dataset",
+    "electricity_demand_dataset",
+    "solar_output_dataset",
 ]

@@ -150,13 +150,13 @@ async def _ensure_starter_contest(
             slug=slug,
             title="OJ 起跑賽 / Starter Cup",
             description_md=(
-                "歡迎來到 CodefyUI 線上評測系統！這場常駐競賽包含 5 個入門題目，\n"
-                "從資料流暖身到分類、迴歸都涵蓋了。加入比賽後就能上傳 `graph.json` "
-                "進行評測，排行榜會即時更新。\n\n"
-                "Welcome to the CodefyUI Online Judge. This always-on contest "
-                "covers a five-problem warmup set — pipeline IO, classification, "
-                "and regression. Join the contest, upload your `graph.json`, "
-                "and watch the leaderboard update in real time.\n"
+                f"歡迎來到 CodefyUI 線上評測系統！這場常駐競賽包含 {len(SEED_PROBLEMS)} "
+                "個入門題目，從資料流暖身、分類到迴歸都涵蓋了。加入比賽後就能上傳 "
+                "`graph.json` 進行評測，排行榜會即時更新。\n\n"
+                f"Welcome to the CodefyUI Online Judge. This always-on contest "
+                f"covers a {len(SEED_PROBLEMS)}-problem warmup set — pipeline IO, "
+                "classification, and regression. Join the contest, upload your "
+                "`graph.json`, and watch the leaderboard update in real time.\n"
             ),
             start_at=now - timedelta(minutes=5),
             end_at=now + timedelta(days=365),
