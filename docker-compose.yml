@@ -1,6 +1,9 @@
 # One-command dev stack:
 #   docker compose up -d --build
 #
+# Or use the installer wizard, which generates a customized .env first:
+#   uv run tools/install.py
+#
 # Services:
 #   db        Postgres 16 (exposed on host :5432)
 #   redis     Redis 7      (exposed on host :6379)
@@ -14,20 +17,24 @@
 # CDUI_PATH below, or set JUDGE_USE_DOCKER=true after building the
 # sandbox image via backend/docker/build_sandbox.ps1). Account creation,
 # login, problem/contest CRUD all work without that.
+#
+# Env vars (.env in repo root) are interpolated below — they're all
+# optional and have sensible dev defaults. The installer wizard populates
+# them; copy .env.example or hand-edit otherwise.
 
 services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: oj
-      POSTGRES_PASSWORD: oj-dev
-      POSTGRES_DB: codefyui_oj
+      POSTGRES_USER: ${POSTGRES_USER:-oj}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-oj-dev}
+      POSTGRES_DB: ${POSTGRES_DB:-codefyui_oj}
     ports:
       - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U oj -d codefyui_oj"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-oj} -d ${POSTGRES_DB:-codefyui_oj}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -49,13 +56,19 @@ services:
       context: ./backend
       dockerfile: docker/api.Dockerfile
     environment:
-      DATABASE_URL: postgresql+asyncpg://oj:oj-dev@db:5432/codefyui_oj
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-oj}:${POSTGRES_PASSWORD:-oj-dev}@db:5432/${POSTGRES_DB:-codefyui_oj}
       REDIS_URL: redis://redis:6379/0
-      JWT_SECRET: dev-only-secret-please-override-in-production-32b+
+      JWT_SECRET: ${JWT_SECRET:-dev-only-secret-please-override-in-production-32b+}
       DEBUG: "true"
-      # Allow the bundled frontend (:8080) and the vite dev server (:5173)
-      CORS_ORIGINS: '["http://localhost:8080","http://localhost:5173","http://127.0.0.1:8080","http://127.0.0.1:5173"]'
-      JUDGE_USE_DOCKER: "false"
+      CORS_ORIGINS: '${CORS_ORIGINS:-["http://localhost:8080","http://localhost:5173","http://127.0.0.1:8080","http://127.0.0.1:5173"]}'
+      JUDGE_USE_DOCKER: "${JUDGE_USE_DOCKER:-false}"
+      # Deployment mode: "competition" (default) or "practice".
+      APP_MODE: "${APP_MODE:-competition}"
+      # Optional one-shot admin bootstrap (competition mode only).
+      # Set all three to auto-create an admin on first boot.
+      BOOTSTRAP_ADMIN_EMAIL: "${BOOTSTRAP_ADMIN_EMAIL:-}"
+      BOOTSTRAP_ADMIN_PASSWORD: "${BOOTSTRAP_ADMIN_PASSWORD:-}"
+      BOOTSTRAP_ADMIN_DISPLAY_NAME: "${BOOTSTRAP_ADMIN_DISPLAY_NAME:-Admin}"
     volumes:
       - oj-storage:/app/storage
     depends_on:
@@ -77,10 +90,11 @@ services:
       context: ./backend
       dockerfile: docker/worker.Dockerfile
     environment:
-      DATABASE_URL: postgresql+asyncpg://oj:oj-dev@db:5432/codefyui_oj
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-oj}:${POSTGRES_PASSWORD:-oj-dev}@db:5432/${POSTGRES_DB:-codefyui_oj}
       REDIS_URL: redis://redis:6379/0
-      JWT_SECRET: dev-only-secret-please-override-in-production-32b+
-      JUDGE_USE_DOCKER: "false"
+      JWT_SECRET: ${JWT_SECRET:-dev-only-secret-please-override-in-production-32b+}
+      JUDGE_USE_DOCKER: "${JUDGE_USE_DOCKER:-false}"
+      APP_MODE: "${APP_MODE:-competition}"
     volumes:
       - oj-storage:/app/storage
     depends_on:
@@ -96,7 +110,7 @@ services:
     depends_on:
       - api
     ports:
-      - "8080:80"
+      - "${FRONTEND_PORT:-8080}:80"
 
 volumes:
   postgres-data:

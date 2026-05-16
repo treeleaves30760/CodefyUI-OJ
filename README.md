@@ -5,16 +5,39 @@ An Online Judge system designed to be used with [CodefyUI](https://github.com/tr
 ## Features
 
 - Account management (Student / Teacher / Admin roles)
+- Two deployment modes — **competition** (multi-user, contests, admin setup) or **practice** (single-machine local use, no login required)
+- First-time admin bootstrap via a `/setup` UI on first visit, or via `BOOTSTRAP_ADMIN_*` env vars for headless / k8s installs
 - Problem management (statement, starter templates, hidden test cases, judge specification)
 - Multiple concurrent contests (time windows, participants, scoring)
-- Leaderboard
+- Per-problem `points` weighting on the leaderboard so contest owners can decide what each task is worth
+- Realtime leaderboard via Server-Sent Events — new submissions update standings without a refresh
 - Docker sandbox judging with hidden test case injection
+- Seeded starter content on first boot once an owner exists: five baseline problems (warmup, iris-knn, wine-logistic, customer-churn, housing-linear), plus a "Starter Cup" contest in competition mode
 
-## Quick Start (recommended: Docker Compose)
+## Quick Start
 
-The fastest way to run the full stack — db, redis, api, worker, and the React frontend — is via the bundled `docker-compose.yml`.
+### Option 1 — interactive installer (recommended)
 
-Prerequisites: Docker ≥ 24 with the compose plugin.
+The wizard checks Docker prerequisites, asks competition vs. practice, optionally pre-creates the admin, generates `.env`, then brings the stack up.
+
+```powershell
+uv run tools/install.py
+```
+
+You'll get something like:
+
+```
+Step 1 / Environment check     [Docker / compose / ports]
+Step 2 / Deployment mode       [competition | practice]
+Step 3 / Admin account         [pre-create now, or via /setup UI later]
+Step 4 / Other settings        [frontend port, DB password, JWT secret]
+Step 5 / Preview               [generated .env, masked secrets]
+→ writes .env, runs docker compose up -d --build, waits for /api/health
+```
+
+Run `uv run tools/install.py --check` just to validate the environment without touching anything.
+
+### Option 2 — manual docker compose
 
 ```powershell
 docker compose up -d --build
@@ -29,7 +52,11 @@ That brings up:
 | Postgres | localhost:5432 (user `oj`, pw `oj-dev`, db `codefyui_oj`) |
 | Redis | localhost:6379 |
 
-The API runs `alembic upgrade head` on every boot, so the schema is ready immediately. Open http://localhost:8080 and register an account to verify everything is wired up.
+The API runs `alembic upgrade head` on every boot. On first launch in **competition** mode (the default), open http://localhost:8080 — you'll land on `/setup` to create the administrator account. After that the baseline problems and Starter Cup are auto-seeded.
+
+Setting `APP_MODE=practice` (in `.env` or as an env var) starts in practice mode: a shared `practice@codefyui.local` user is auto-provisioned, login is hidden, and seeded problems become available without registration.
+
+For headless deployments set `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_PASSWORD` / `BOOTSTRAP_ADMIN_DISPLAY_NAME` to auto-create the admin on first boot instead of going through `/setup`. Setting `OJ_SEED_ENABLED=false` disables baseline content seeding entirely.
 
 Useful commands:
 
@@ -116,10 +143,10 @@ Quick overview:
 | 2 | Problems CRUD + JudgeSpec | ✅ |
 | 3 | Submissions + sandbox judging pipeline (dev mode) | ✅ |
 | 4 | Docker sandbox image | ✅ |
-| 5 | Contests + leaderboard | ✅ |
+| 5 | Contests + weighted leaderboard | ✅ |
 | 6 | Production Docker compose | ✅ |
+| 7 | Realtime leaderboard SSE + seed content | ✅ |
 | — | Email verification / SSO | Not implemented |
-| — | Realtime leaderboard SSE | Not implemented |
 | — | Rate limit middleware | Not implemented |
 
 ## License
