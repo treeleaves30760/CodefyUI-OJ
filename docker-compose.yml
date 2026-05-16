@@ -1,0 +1,104 @@
+# One-command dev stack:
+#   docker compose up -d --build
+#
+# Services:
+#   db        Postgres 16 (exposed on host :5432)
+#   redis     Redis 7      (exposed on host :6379)
+#   api       FastAPI on host :8100, container :8000 — runs alembic upgrade head on boot
+#   worker    RQ worker for judge queue (subprocess judge — see note below)
+#   frontend  React + nginx on :8080, proxies /api to api:8000
+#
+# Open http://localhost:8080 to use the app.
+#
+# Note: judging needs the cdui repo bind-mounted into the worker (set
+# CDUI_PATH below, or set JUDGE_USE_DOCKER=true after building the
+# sandbox image via backend/docker/build_sandbox.ps1). Account creation,
+# login, problem/contest CRUD all work without that.
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: oj
+      POSTGRES_PASSWORD: oj-dev
+      POSTGRES_DB: codefyui_oj
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U oj -d codefyui_oj"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: docker/api.Dockerfile
+    environment:
+      DATABASE_URL: postgresql+asyncpg://oj:oj-dev@db:5432/codefyui_oj
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: dev-only-secret-please-override-in-production-32b+
+      DEBUG: "true"
+      # Allow the bundled frontend (:8080) and the vite dev server (:5173)
+      CORS_ORIGINS: '["http://localhost:8080","http://localhost:5173","http://127.0.0.1:8080","http://127.0.0.1:5173"]'
+      JUDGE_USE_DOCKER: "false"
+    volumes:
+      - oj-storage:/app/storage
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8100:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: docker/worker.Dockerfile
+    environment:
+      DATABASE_URL: postgresql+asyncpg://oj:oj-dev@db:5432/codefyui_oj
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: dev-only-secret-please-override-in-production-32b+
+      JUDGE_USE_DOCKER: "false"
+    volumes:
+      - oj-storage:/app/storage
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    depends_on:
+      - api
+    ports:
+      - "8080:80"
+
+volumes:
+  postgres-data:
+  redis-data:
+  oj-storage:

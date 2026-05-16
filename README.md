@@ -10,6 +10,45 @@ An Online Judge system designed to be used with [CodefyUI](https://github.com/tr
 - Leaderboard
 - Docker sandbox judging with hidden test case injection
 
+## Quick Start (recommended: Docker Compose)
+
+The fastest way to run the full stack — db, redis, api, worker, and the React frontend — is via the bundled `docker-compose.yml`.
+
+Prerequisites: Docker ≥ 24 with the compose plugin.
+
+```powershell
+docker compose up -d --build
+```
+
+That brings up:
+
+| Service | URL |
+|---|---|
+| Frontend (React + nginx) | http://localhost:8080 |
+| API (FastAPI) | http://localhost:8100/api/health |
+| Postgres | localhost:5432 (user `oj`, pw `oj-dev`, db `codefyui_oj`) |
+| Redis | localhost:6379 |
+
+The API runs `alembic upgrade head` on every boot, so the schema is ready immediately. Open http://localhost:8080 and register an account to verify everything is wired up.
+
+Useful commands:
+
+```powershell
+# Tail logs
+docker compose logs -f api
+
+# Stop everything (keep volumes)
+docker compose down
+
+# Stop and wipe the database
+docker compose down -v
+
+# Rebuild after code changes
+docker compose up -d --build
+```
+
+> **Note on judging:** the bundled dev stack runs the judge in subprocess mode and does not include the cdui repo, so submissions will fail to be scored until you either bind-mount cdui into the worker or switch to the production stack with the sandbox image. Account creation, login, and problem/contest management work fully.
+
 ## Architecture
 
 See the [implementation plan](../.claude/plans/oj-cdui-json-oj-codefyui-oj-crystalline-plum.md) for details.
@@ -23,21 +62,29 @@ See the [implementation plan](../.claude/plans/oj-cdui-json-oj-codefyui-oj-cryst
                                                    └──────────┘
 ```
 
-## Development
+## Development without Docker
+
+Prefer the Docker workflow above. The manual workflow is here for backend/frontend hacking with hot reload.
 
 Prerequisites:
 
 - [uv](https://docs.astral.sh/uv/) ≥ 0.5
 - Node.js ≥ 20, pnpm or npm
-- Docker ≥ 24 (required starting from Phase 4 for the sandbox container)
+- Docker (for db/redis, and for the sandbox image from Phase 4 on)
+
+### Postgres + Redis only
+
+```powershell
+docker compose up -d db redis
+```
 
 ### Backend
 
 ```powershell
 cd backend
 uv sync --extra dev
-uv run uvicorn app.main:app --reload --port 8000
-# GET http://localhost:8000/api/health
+uv run uvicorn app.main:app --reload --port 8100
+# GET http://localhost:8100/api/health
 ```
 
 ### Frontend
@@ -46,13 +93,7 @@ uv run uvicorn app.main:app --reload --port 8000
 cd frontend
 pnpm install
 pnpm dev
-# http://localhost:5173
-```
-
-### Postgres + Redis (dev)
-
-```powershell
-docker compose up -d db redis
+# http://localhost:5173  (Vite proxies /api → http://localhost:8100)
 ```
 
 ## Deployment
