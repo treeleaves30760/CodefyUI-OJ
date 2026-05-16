@@ -1,0 +1,162 @@
+{
+  "name": "Reference — Normalize → LinearRegression",
+  "nodes": [
+    {
+      "id": "start",
+      "type": "Start",
+      "position": {
+        "x": -200,
+        "y": 0
+      },
+      "data": {
+        "params": {}
+      }
+    },
+    {
+      "id": "__TRAIN__",
+      "type": "CSVReader",
+      "position": {
+        "x": 80,
+        "y": -120
+      },
+      "data": {
+        "params": {
+          "path": "data/samples/train.csv",
+          "target_column": "label",
+          "include_columns": "*",
+          "skip_header": true
+        }
+      }
+    },
+    {
+      "id": "__TEST_X__",
+      "type": "CSVReader",
+      "position": {
+        "x": 80,
+        "y": 120
+      },
+      "data": {
+        "params": {
+          "path": "data/samples/test.csv",
+          "target_column": "",
+          "include_columns": "*",
+          "skip_header": true
+        }
+      }
+    },
+    {
+      "id": "norm_train",
+      "type": "Normalize",
+      "position": {
+        "x": 320,
+        "y": -120
+      },
+      "data": {
+        "params": {
+          "method": "zscore"
+        }
+      }
+    },
+    {
+      "id": "norm_query",
+      "type": "Normalize",
+      "position": {
+        "x": 320,
+        "y": 120
+      },
+      "data": {
+        "params": {
+          "method": "zscore"
+        }
+      }
+    },
+    {
+      "id": "model",
+      "type": "LinearRegression",
+      "position": {
+        "x": 520,
+        "y": 0
+      },
+      "data": {
+        "params": {}
+      }
+    },
+    {
+      "id": "__SUBMIT__",
+      "type": "Print",
+      "position": {
+        "x": 720,
+        "y": 0
+      },
+      "data": {
+        "params": {
+          "label": "predictions"
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "trig___TRAIN__",
+      "source": "start",
+      "target": "__TRAIN__",
+      "sourceHandle": "trigger",
+      "type": "trigger"
+    },
+    {
+      "id": "trig___TEST_X__",
+      "source": "start",
+      "target": "__TEST_X__",
+      "sourceHandle": "trigger",
+      "type": "trigger"
+    },
+    {
+      "id": "__TRAIN___tensor__norm_train_input",
+      "source": "__TRAIN__",
+      "target": "norm_train",
+      "sourceHandle": "tensor",
+      "targetHandle": "input",
+      "type": "data"
+    },
+    {
+      "id": "__TEST_X___tensor__norm_query_input",
+      "source": "__TEST_X__",
+      "target": "norm_query",
+      "sourceHandle": "tensor",
+      "targetHandle": "input",
+      "type": "data"
+    },
+    {
+      "id": "norm_train_output__model_x_train",
+      "source": "norm_train",
+      "target": "model",
+      "sourceHandle": "output",
+      "targetHandle": "x_train",
+      "type": "data"
+    },
+    {
+      "id": "norm_query_output__model_x_query",
+      "source": "norm_query",
+      "target": "model",
+      "sourceHandle": "output",
+      "targetHandle": "x_query",
+      "type": "data"
+    },
+    {
+      "id": "__TRAIN___labels__model_y_train",
+      "source": "__TRAIN__",
+      "target": "model",
+      "sourceHandle": "labels",
+      "targetHandle": "y_train",
+      "type": "data"
+    },
+    {
+      "id": "model_predictions____SUBMIT___value",
+      "source": "model",
+      "target": "__SUBMIT__",
+      "sourceHandle": "predictions",
+      "targetHandle": "value",
+      "type": "data"
+    }
+  ]
+}
