@@ -17,6 +17,7 @@ from sqlalchemy import select
 
 from app.core.storage import ensure_dir, get_submission_dir
 from app.db import async_session_maker
+from app.judge.events import publish_contest_update
 from app.judge.runner import run_judge
 from app.models import Problem, Submission, SubmissionStatus
 
@@ -103,6 +104,7 @@ async def _finalize(
     runtime_ms: int | None,
     raw: dict | None,
 ) -> None:
+    contest_id: int | None = None
     async with async_session_maker() as session:
         sub = await session.get(Submission, submission_id)
         if sub is None:
@@ -114,6 +116,12 @@ async def _finalize(
         sub.raw_result = raw
         sub.judge_finished_at = datetime.now(timezone.utc)
         await session.commit()
+        contest_id = sub.contest_id
+
+    if contest_id is not None:
+        # Notify SSE subscribers so the contest leaderboard updates live.
+        # Best-effort: publish errors are swallowed inside the helper.
+        publish_contest_update(contest_id, reason="submission")
 
 
 def run_rq_worker() -> None:

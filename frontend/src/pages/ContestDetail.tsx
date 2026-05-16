@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -7,9 +7,12 @@ import {
   getContest,
   getLeaderboard,
   joinContest,
+  streamLeaderboard,
   type Contest,
   type Leaderboard,
 } from '../api/contests'
+
+type LeaderboardConnectionState = 'connecting' | 'live' | 'polling'
 
 export function ContestDetail() {
   const { slug } = useParams<{ slug: string }>()
@@ -18,6 +21,8 @@ export function ContestDetail() {
   const [leaderboard, setLeaderboard] = useState<Leaderboard | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [joining, setJoining] = useState(false)
+  const [liveState, setLiveState] = useState<LeaderboardConnectionState>('connecting')
+  const pollHandleRef = useRef<number | null>(null)
 
   async function refresh() {
     if (!slug) return
@@ -32,6 +37,55 @@ export function ContestDetail() {
 
   useEffect(() => {
     void refresh()
+  }, [slug])
+
+  // Live leaderboard: SSE primary, polling fallback.
+  useEffect(() => {
+    if (!slug) return
+    let cancelled = false
+    setLiveState('connecting')
+
+    const stopPolling = () => {
+      if (pollHandleRef.current !== null) {
+        window.clearInterval(pollHandleRef.current)
+        pollHandleRef.current = null
+      }
+    }
+    const startPolling = () => {
+      if (pollHandleRef.current !== null) return
+      pollHandleRef.current = window.setInterval(() => {
+        if (cancelled) return
+        getLeaderboard(slug)
+          .then((lb) => !cancelled && setLeaderboard(lb))
+          .catch(() => {})
+      }, 5000)
+    }
+
+    const source = streamLeaderboard(slug, {
+      onOpen: () => {
+        if (cancelled) return
+        stopPolling()
+        setLiveState('live')
+      },
+      onSnapshot: (lb) => {
+        if (cancelled) return
+        setLeaderboard(lb)
+      },
+      onError: () => {
+        if (cancelled) return
+        // EventSource auto-reconnects on transient errors, but flip to
+        // polling so the user keeps getting updates if the server can't
+        // stream at all.
+        setLiveState('polling')
+        startPolling()
+      },
+    })
+
+    return () => {
+      cancelled = true
+      source.close()
+      stopPolling()
+    }
   }, [slug])
 
   async function handleJoin() {
@@ -115,7 +169,33 @@ export function ContestDetail() {
         </section>
 
         <section className="mt-10">
-          <h2 className="text-lg font-semibold">{t('contests.detail.leaderboard')}</h2>
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-lg font-semibold">{t('contests.detail.leaderboard')}</h2>
+            <div className="flex items-center gap-2 text-xs">
+              <span
+                className={
+                  liveState === 'live'
+                    ? 'h-2 w-2 animate-pulse rounded-full bg-emerald-400'
+                    : liveState === 'polling'
+                      ? 'h-2 w-2 rounded-full bg-amber-400'
+                      : 'h-2 w-2 animate-pulse rounded-full bg-text-muted'
+                }
+                aria-hidden
+              />
+              <span className="font-mono uppercase tracking-wider text-text-muted">
+                {liveState === 'live'
+                  ? t('contests.detail.live')
+                  : liveState === 'polling'
+                    ? t('contests.detail.polling')
+                    : t('contests.detail.connecting')}
+              </span>
+              {leaderboard?.generated_at && (
+                <span className="text-text-muted">
+                  · {new Date(leaderboard.generated_at).toLocaleTimeString()}
+                </span>
+              )}
+            </div>
+          </div>
           <div className="mt-3 overflow-hidden rounded-lg border border-border bg-surface">
             {leaderboard && leaderboard.entries.length > 0 ? (
               <table className="w-full text-left text-sm">

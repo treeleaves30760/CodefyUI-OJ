@@ -81,3 +81,35 @@ export async function getLeaderboard(slug: string): Promise<Leaderboard> {
   const { data } = await apiClient.get<Leaderboard>(`/contests/${slug}/leaderboard`)
   return data
 }
+
+/**
+ * Open an SSE connection that pushes a fresh leaderboard on every contest
+ * submission update. Returns the live EventSource so the caller can close
+ * it on unmount. EventSource doesn't accept custom headers, so the bearer
+ * token rides on the query string.
+ */
+export function streamLeaderboard(
+  slug: string,
+  handlers: {
+    onSnapshot: (lb: Leaderboard) => void
+    onOpen?: () => void
+    onError?: (err: Event) => void
+  },
+): EventSource {
+  const token = localStorage.getItem('access_token') ?? ''
+  const qs = new URLSearchParams({ token }).toString()
+  const url = `/api/contests/${slug}/leaderboard/stream?${qs}`
+  const source = new EventSource(url)
+  source.addEventListener('open', () => handlers.onOpen?.())
+  source.addEventListener('leaderboard', (event) => {
+    try {
+      const parsed = JSON.parse((event as MessageEvent).data) as Leaderboard
+      handlers.onSnapshot(parsed)
+    } catch {
+      // Drop malformed payloads silently — keepalive comments and partial
+      // packets sometimes squeak through.
+    }
+  })
+  source.addEventListener('error', (event) => handlers.onError?.(event))
+  return source
+}
