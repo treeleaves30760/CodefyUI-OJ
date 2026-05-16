@@ -48,6 +48,14 @@ export function Navbar() {
               <Link to="/submissions" className="text-text-muted hover:text-text">
                 {t('navbar.submissions')}
               </Link>
+              {(user.role === 'admin' || user.is_superuser) && (
+                <Link
+                  to="/admin"
+                  className="rounded border border-accent/40 px-2 py-1 text-xs text-accent hover:bg-accent/10"
+                >
+                  {t('navbar.admin')}
+                </Link>
+              )}
               <span className="text-text-muted">
                 {user.display_name || user.email}
                 <span className="ml-2 rounded bg-accent/15 px-1.5 py-0.5 text-xs text-accent">
@@ -63,6 +71,9 @@ export function Navbar() {
             </>
           ) : (
             <>
+              <Link to="/problems" className="text-text-muted hover:text-text">
+                {t('navbar.problems')}
+              </Link>
               <Link to="/login" className="text-text-muted hover:text-text">
                 {t('navbar.login')}
               </Link>

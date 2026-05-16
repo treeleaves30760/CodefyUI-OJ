@@ -60,6 +60,24 @@ export interface Leaderboard {
   entries: LeaderboardEntry[]
 }
 
+export interface ContestCreatePayload {
+  slug: string
+  title: string
+  description_md?: string
+  start_at: string
+  end_at: string
+  visibility: ContestVisibility
+  problems?: ContestProblemEntry[]
+}
+
+export interface ContestUpdatePayload {
+  title?: string
+  description_md?: string
+  start_at?: string
+  end_at?: string
+  visibility?: ContestVisibility
+}
+
 export async function listContests(status?: ContestRuntimeStatus): Promise<ContestListItem[]> {
   const { data } = await apiClient.get<ContestListItem[]>('/contests', {
     params: status ? { status } : {},
@@ -75,6 +93,29 @@ export async function getContest(slug: string): Promise<Contest> {
 export async function joinContest(slug: string): Promise<Contest> {
   const { data } = await apiClient.post<Contest>(`/contests/${slug}/join`)
   return data
+}
+
+export async function createContest(body: ContestCreatePayload): Promise<Contest> {
+  const { data } = await apiClient.post<Contest>('/contests', body)
+  return data
+}
+
+export async function updateContest(slug: string, body: ContestUpdatePayload): Promise<Contest> {
+  const { data } = await apiClient.put<Contest>(`/contests/${slug}`, body)
+  return data
+}
+
+export async function deleteContest(slug: string): Promise<void> {
+  await apiClient.delete(`/contests/${slug}`)
+}
+
+export async function addContestProblem(slug: string, entry: ContestProblemEntry): Promise<Contest> {
+  const { data } = await apiClient.post<Contest>(`/contests/${slug}/problems`, entry)
+  return data
+}
+
+export async function removeContestProblem(slug: string, problemSlug: string): Promise<void> {
+  await apiClient.delete(`/contests/${slug}/problems/${problemSlug}`)
 }
 
 export async function getLeaderboard(slug: string): Promise<Leaderboard> {

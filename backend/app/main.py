@@ -10,6 +10,7 @@ from fastapi_users.exceptions import UserAlreadyExists
 from fastapi_users.password import PasswordHelper
 from sqlalchemy import func, or_, select
 
+from app.api import admin as admin_api
 from app.api import auth as auth_api
 from app.api import contests as contests_api
 from app.api import leaderboard as leaderboard_api
@@ -176,6 +177,11 @@ def create_app() -> FastAPI:
             users_api.router,
             prefix=f"{settings.api_prefix}/users",
             tags=["users"],
+        )
+        app.include_router(
+            admin_api.router,
+            prefix=f"{settings.api_prefix}/admin",
+            tags=["admin"],
         )
 
     app.include_router(
