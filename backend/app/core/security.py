@@ -81,6 +81,18 @@ def _resolve_current_active_user():
     return fastapi_users.current_user(active=True)
 
 
+def _resolve_optional_active_user():
+    """Like ``current_active_user`` but returns ``None`` when unauthenticated.
+
+    Used by endpoints that should be browsable without login (e.g. the public
+    problem catalog). Practice mode still resolves to the shared practice user
+    so downstream filtering stays uniform.
+    """
+    if get_settings().app_mode == "practice":
+        return _practice_user_dependency
+    return fastapi_users.current_user(active=True, optional=True)
+
+
 def _resolve_current_superuser():
     if get_settings().app_mode == "practice":
         async def _denied() -> User:
@@ -94,4 +106,5 @@ def _resolve_current_superuser():
 
 
 current_active_user = _resolve_current_active_user()
+optional_active_user = _resolve_optional_active_user()
 current_superuser = _resolve_current_superuser()

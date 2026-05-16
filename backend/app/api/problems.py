@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.core.permissions import require_teacher
-from app.core.security import current_active_user
+from app.core.security import current_active_user, optional_active_user
 from app.core.storage import ensure_dir, get_test_data_dir
 from app.db import get_async_session
 from app.models.problem import Problem
@@ -21,7 +21,9 @@ from app.schemas.problem import (
 router = APIRouter()
 
 
-def _student_visible_only(user: User) -> bool:
+def _student_visible_only(user: User | None) -> bool:
+    if user is None:
+        return True
     return user.role == UserRole.student and not user.is_superuser
 
 
@@ -59,7 +61,7 @@ async def _get_problem_or_404(slug: str, db: AsyncSession) -> Problem:
 async def list_problems(
     published_only: Annotated[bool, Query()] = True,
     db: AsyncSession = Depends(get_async_session),
-    user: User = Depends(current_active_user),
+    user: User | None = Depends(optional_active_user),
 ):
     is_practice = get_settings().app_mode == "practice"
     stmt = select(Problem).order_by(Problem.created_at.desc())
@@ -75,7 +77,7 @@ async def list_problems(
 async def get_problem(
     slug: str,
     db: AsyncSession = Depends(get_async_session),
-    user: User = Depends(current_active_user),
+    user: User | None = Depends(optional_active_user),
 ):
     problem = await _get_problem_or_404(slug, db)
     if not problem.published and _student_visible_only(user):
@@ -161,7 +163,7 @@ async def delete_problem(
 async def download_template(
     slug: str,
     db: AsyncSession = Depends(get_async_session),
-    user: User = Depends(current_active_user),
+    user: User | None = Depends(optional_active_user),
 ):
     problem = await _get_problem_or_404(slug, db)
     if not problem.published and _student_visible_only(user):

@@ -1,14 +1,20 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useTranslation } from 'react-i18next'
 import { downloadTemplate, getProblem, type Problem } from '../api/problems'
 import { SubmissionUploader } from '../components/SubmissionUploader'
+import { useAuth } from '../auth/AuthContext'
+import { useSystem } from '../system/SystemContext'
 
 export function ProblemDetail() {
   const { slug } = useParams<{ slug: string }>()
   const { t } = useTranslation()
+  const { user } = useAuth()
+  const { status } = useSystem()
+  const isPractice = status?.mode === 'practice'
+  const canSubmit = isPractice || !!user
   const [problem, setProblem] = useState<Problem | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -80,7 +86,17 @@ export function ProblemDetail() {
           <h2 className="mb-3 text-sm font-semibold text-text-muted">
             {t('problems.detail.uploadSolution')}
           </h2>
-          {problem.has_test_data ? (
+          {!canSubmit ? (
+            <div className="rounded border border-dashed border-border bg-bg p-4 text-center text-xs text-text-muted">
+              <Link to="/login" className="text-accent hover:underline">
+                {t('navbar.login')}
+              </Link>
+              {' / '}
+              <Link to="/register" className="text-accent hover:underline">
+                {t('navbar.register')}
+              </Link>
+            </div>
+          ) : problem.has_test_data ? (
             <SubmissionUploader problemSlug={problem.slug} />
           ) : (
             <div className="rounded border border-dashed border-border bg-bg p-4 text-center text-xs text-rose-400">
