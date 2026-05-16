@@ -4,6 +4,19 @@ const en = {
     loadFailed: 'Failed to load',
     unknownError: 'Unknown error',
   },
+  system: {
+    unavailable: 'System unreachable: {{message}}',
+  },
+  setup: {
+    title: 'Initial setup',
+    subtitle: 'Create the first administrator to start managing contests and problems.',
+    warning: 'This account will have full administrative access. Use a strong password and keep it safe.',
+    displayName: 'Display name',
+    email: 'Email',
+    passwordWithHint: 'Password (at least 8 characters)',
+    submitting: 'Creating…',
+    submit: 'Create administrator',
+  },
   navbar: {
     contests: 'Contests',
     problems: 'Problems',
@@ -11,6 +24,7 @@ const en = {
     login: 'Sign in',
     register: 'Sign up',
     logout: 'Sign out',
+    practiceBadge: 'Practice mode',
   },
   auth: {
     login: {
@@ -37,6 +51,9 @@ const en = {
   },
   home: {
     welcome: 'Welcome, <accent>{{name}}</accent>',
+    practiceUser: 'Learner',
+    practiceTagline:
+      'Practice mode — no sign-in required. Download a problem template, build it in cdui, then upload to get graded. Everything stays on this machine.',
     tagline:
       'A visual-programming online judge. Download the problem template → draw it in cdui → upload graph.json → grade in a sandbox.',
     backendCheck: 'Backend connection',
@@ -134,6 +151,9 @@ const en = {
       problems: 'Problems',
       noProblems: 'No problems have been added yet.',
       leaderboard: 'Leaderboard',
+      live: 'Live',
+      polling: 'Polling',
+      connecting: 'Connecting',
       noEntries: 'No submissions yet.',
       colNo: '#',
       colProblem: 'Problem',

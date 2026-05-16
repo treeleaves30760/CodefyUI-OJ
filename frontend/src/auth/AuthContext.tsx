@@ -8,6 +8,7 @@ import {
   type RegisterPayload,
   type User,
 } from '../api/auth'
+import { useSystem } from '../system/SystemContext'
 
 const TOKEN_KEY = 'access_token'
 
@@ -23,10 +24,18 @@ interface AuthState {
 const AuthContext = createContext<AuthState | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const { status, loading: systemLoading } = useSystem()
+  const isPractice = status?.mode === 'practice'
+
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
 
   const refresh = useCallback(async () => {
+    if (isPractice) {
+      setUser(null)
+      setLoading(false)
+      return
+    }
     const token = localStorage.getItem(TOKEN_KEY)
     if (!token) {
       setUser(null)
@@ -42,21 +51,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [isPractice])
 
   useEffect(() => {
+    if (systemLoading) return
     void refresh()
-  }, [refresh])
+  }, [refresh, systemLoading])
 
-  const login = useCallback(
-    async (payload: LoginPayload) => {
-      const { access_token } = await apiLogin(payload)
-      localStorage.setItem(TOKEN_KEY, access_token)
-      const me = await fetchMe()
-      setUser(me)
-    },
-    [],
-  )
+  const login = useCallback(async (payload: LoginPayload) => {
+    const { access_token } = await apiLogin(payload)
+    localStorage.setItem(TOKEN_KEY, access_token)
+    const me = await fetchMe()
+    setUser(me)
+  }, [])
 
   const register = useCallback(
     async (payload: RegisterPayload) => {

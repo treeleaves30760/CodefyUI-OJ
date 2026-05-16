@@ -4,6 +4,19 @@ const zhTW = {
     loadFailed: '載入失敗',
     unknownError: '未知錯誤',
   },
+  system: {
+    unavailable: '系統無法連線：{{message}}',
+  },
+  setup: {
+    title: '首次設定',
+    subtitle: '建立第一位管理員帳號，就可以開始管理競賽與題目。',
+    warning: '這個帳號會擁有完整管理權限。建議使用強密碼並妥善保存。',
+    displayName: '顯示名稱',
+    email: 'Email',
+    passwordWithHint: '密碼（至少 8 字元）',
+    submitting: '建立中…',
+    submit: '建立管理員',
+  },
   navbar: {
     contests: '競賽',
     problems: '題庫',
@@ -11,6 +24,7 @@ const zhTW = {
     login: '登入',
     register: '註冊',
     logout: '登出',
+    practiceBadge: '本地練習模式',
   },
   auth: {
     login: {
@@ -37,6 +51,9 @@ const zhTW = {
   },
   home: {
     welcome: '歡迎，<accent>{{name}}</accent>',
+    practiceUser: '練習者',
+    practiceTagline:
+      '本地練習模式 — 免登入。下載題目範本，用 cdui 出圖後上傳就會評分；所有提交都記在本機這台機器上。',
     tagline:
       '視覺化程式設計線上評測系統。下載題目範本 → 在 cdui 出圖 → 上傳 graph.json → 沙箱評分。',
     backendCheck: '後端連線檢查',
@@ -133,6 +150,9 @@ const zhTW = {
       problems: '題目',
       noProblems: '尚未配置題目。',
       leaderboard: '排行榜',
+      live: '即時',
+      polling: '輪詢中',
+      connecting: '連線中',
       noEntries: '尚無提交紀錄。',
       colNo: '#',
       colProblem: '題目',

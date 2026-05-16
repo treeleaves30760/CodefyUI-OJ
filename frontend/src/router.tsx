@@ -6,6 +6,7 @@ import { Login } from './pages/Login'
 import { ProblemDetail } from './pages/ProblemDetail'
 import { ProblemList } from './pages/ProblemList'
 import { Register } from './pages/Register'
+import { Setup } from './pages/Setup'
 import { SubmissionDetailPage } from './pages/SubmissionDetail'
 import { SubmissionList } from './pages/SubmissionList'
 import { ProtectedRoute } from './auth/ProtectedRoute'
@@ -20,6 +21,7 @@ function protectedLayout(element: React.ReactNode) {
 }
 
 export const router = createBrowserRouter([
+  { path: '/setup', element: <Setup /> },
   { path: '/login', element: <Login /> },
   { path: '/register', element: <Register /> },
   { path: '/', element: protectedLayout(<Home />) },

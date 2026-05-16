@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { useAuth } from '../auth/AuthContext'
+import { useSystem } from '../system/SystemContext'
 import { apiClient } from '../api/client'
 
 interface HealthResponse {
@@ -10,6 +11,7 @@ interface HealthResponse {
 
 export function Home() {
   const { user } = useAuth()
+  const { status } = useSystem()
   const { t } = useTranslation()
   const [health, setHealth] = useState<HealthResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -21,16 +23,21 @@ export function Home() {
       .catch((err) => setError(err.message ?? 'unknown error'))
   }, [])
 
+  const isPractice = status?.mode === 'practice'
+  const greetingName = isPractice ? t('home.practiceUser') : user?.display_name || user?.email || ''
+
   return (
     <div>
       <h1 className="text-4xl font-bold tracking-tight">
         <Trans
           i18nKey="home.welcome"
-          values={{ name: user?.display_name || user?.email || '' }}
+          values={{ name: greetingName }}
           components={{ accent: <span className="text-accent" /> }}
         />
       </h1>
-      <p className="mt-3 text-text-muted">{t('home.tagline')}</p>
+      <p className="mt-3 text-text-muted">
+        {isPractice ? t('home.practiceTagline') : t('home.tagline')}
+      </p>
 
       <section className="mt-10 rounded-lg border border-border bg-surface p-6">
         <h2 className="text-lg font-semibold">{t('home.backendCheck')}</h2>
@@ -51,9 +58,18 @@ export function Home() {
       </section>
 
       <section className="mt-8 grid gap-4 sm:grid-cols-3">
-        <Stat label={t('home.activeContests')} value="—" />
-        <Stat label={t('home.availableProblems')} value="—" />
-        <Stat label={t('home.bestRank')} value="—" />
+        {isPractice ? (
+          <Stat
+            label={t('home.availableProblems')}
+            value={status?.practice_problem_count != null ? String(status.practice_problem_count) : '—'}
+          />
+        ) : (
+          <>
+            <Stat label={t('home.activeContests')} value="—" />
+            <Stat label={t('home.availableProblems')} value="—" />
+            <Stat label={t('home.bestRank')} value="—" />
+          </>
+        )}
       </section>
     </div>
   )

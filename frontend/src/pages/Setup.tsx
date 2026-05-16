@@ -1,38 +1,36 @@
 import { useState, type FormEvent } from 'react'
-import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { setupAdmin } from '../api/system'
 import { useAuth } from '../auth/AuthContext'
 import { useSystem } from '../system/SystemContext'
 import { LanguageSwitcher } from '../components/LanguageSwitcher'
 
-interface LocationState {
-  from?: { pathname: string }
-}
-
-export function Login() {
-  const { login, user } = useAuth()
+export function Setup() {
   const navigate = useNavigate()
-  const location = useLocation()
   const { t } = useTranslation()
-  const { status } = useSystem()
-  const from = (location.state as LocationState | null)?.from?.pathname ?? '/'
+  const { status, refresh } = useSystem()
+  const { login } = useAuth()
 
   const [email, setEmail] = useState('')
+  const [displayName, setDisplayName] = useState('')
   const [password, setPassword] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   if (status?.mode === 'practice') return <Navigate to="/" replace />
-  if (status && !status.initialized) return <Navigate to="/setup" replace />
-  if (user) return <Navigate to={from} replace />
+  if (status && status.initialized) return <Navigate to="/login" replace />
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setSubmitting(true)
     setError(null)
     try {
+      await setupAdmin({ email, password, display_name: displayName })
+      // Auto-login so the new admin lands in an authenticated session.
       await login({ email, password })
-      navigate(from, { replace: true })
+      await refresh()
+      navigate('/', { replace: true })
     } catch (err) {
       setError(extractError(err, t('common.unknownError')))
     } finally {
@@ -46,27 +44,39 @@ export function Login() {
         <LanguageSwitcher />
       </div>
       <main className="mx-auto mt-12 max-w-md px-6">
-        <h1 className="text-3xl font-bold tracking-tight">{t('auth.login.title')}</h1>
-        <p className="mt-2 text-text-muted">{t('auth.login.subtitle')}</p>
+        <h1 className="text-3xl font-bold tracking-tight">{t('setup.title')}</h1>
+        <p className="mt-2 text-text-muted">{t('setup.subtitle')}</p>
+        <div className="mt-3 rounded border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+          {t('setup.warning')}
+        </div>
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-4">
-          <Field label={t('auth.login.email')}>
+          <Field label={t('setup.displayName')}>
+            <input
+              type="text"
+              required
+              autoFocus
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              className="input"
+            />
+          </Field>
+          <Field label={t('setup.email')}>
             <input
               type="email"
               required
-              autoFocus
               autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="input"
             />
           </Field>
-          <Field label={t('auth.login.password')}>
+          <Field label={t('setup.passwordWithHint')}>
             <input
               type="password"
               required
               minLength={8}
-              autoComplete="current-password"
+              autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="input"
@@ -76,16 +86,9 @@ export function Login() {
           {error && <div className="text-sm text-red-400">{error}</div>}
 
           <button type="submit" disabled={submitting} className="btn-primary w-full">
-            {submitting ? t('auth.login.submitting') : t('auth.login.submit')}
+            {submitting ? t('setup.submitting') : t('setup.submit')}
           </button>
         </form>
-
-        <p className="mt-6 text-sm text-text-muted">
-          {t('auth.login.noAccount')}{' '}
-          <Link to="/register" className="text-accent hover:underline">
-            {t('auth.login.register')}
-          </Link>
-        </p>
       </main>
     </>
   )

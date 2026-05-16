@@ -1,19 +1,25 @@
 import { useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../auth/AuthContext'
+import { useSystem } from '../system/SystemContext'
 import { LanguageSwitcher } from '../components/LanguageSwitcher'
 
 export function Register() {
-  const { register } = useAuth()
+  const { register, user } = useAuth()
   const navigate = useNavigate()
   const { t } = useTranslation()
+  const { status } = useSystem()
 
   const [email, setEmail] = useState('')
   const [displayName, setDisplayName] = useState('')
   const [password, setPassword] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  if (status?.mode === 'practice') return <Navigate to="/" replace />
+  if (status && !status.initialized) return <Navigate to="/setup" replace />
+  if (user) return <Navigate to="/" replace />
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
