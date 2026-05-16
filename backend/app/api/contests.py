@@ -3,6 +3,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import desc, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -312,7 +313,12 @@ async def join_contest(
     already = await _is_participant(db, contest.id, user.id)
     if not already:
         db.add(ContestParticipant(contest_id=contest.id, user_id=user.id))
-        await db.commit()
+        try:
+            await db.commit()
+        except IntegrityError:
+            # Concurrent join request beat us to it — both are equally valid;
+            # rollback our duplicate row and treat the user as joined.
+            await db.rollback()
         await db.refresh(contest)
     return await _to_read(db, contest, user)
 
