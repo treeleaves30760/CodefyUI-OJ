@@ -1,0 +1,80 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #0d1117;
+  --color-surface: #161b22;
+  --color-border: #30363d;
+  --color-text: #c9d1d9;
+  --color-text-muted: #8b949e;
+  --color-accent: #2dd4bf;
+  --color-accent-hover: #14b8a6;
+}
+
+html,
+body,
+#root {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  min-height: 100vh;
+}
+
+body {
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+@layer components {
+  .input {
+    @apply w-full rounded border border-border bg-bg px-3 py-2 text-sm outline-none transition-colors;
+    @apply focus:border-accent focus:ring-1 focus:ring-accent/30;
+  }
+
+  .btn-primary {
+    @apply rounded bg-accent px-4 py-2 text-sm font-medium text-bg transition-colors;
+    @apply hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-secondary {
+    @apply rounded border border-border px-4 py-2 text-sm font-medium text-text-muted transition-colors;
+    @apply hover:border-accent hover:text-accent;
+  }
+
+  .card {
+    @apply rounded-lg border border-border bg-surface p-6;
+  }
+
+  .prose-oj {
+    @apply text-text leading-relaxed;
+  }
+  .prose-oj h1 { @apply mt-8 mb-3 text-2xl font-bold; }
+  .prose-oj h2 { @apply mt-7 mb-3 text-xl font-semibold; }
+  .prose-oj h3 { @apply mt-6 mb-2 text-lg font-semibold; }
+  .prose-oj p { @apply my-3; }
+  .prose-oj ul { @apply my-3 list-disc pl-6; }
+  .prose-oj ol { @apply my-3 list-decimal pl-6; }
+  .prose-oj li { @apply my-1; }
+  .prose-oj code {
+    @apply rounded bg-bg px-1.5 py-0.5 font-mono text-sm text-accent;
+  }
+  .prose-oj pre {
+    @apply my-4 overflow-x-auto rounded border border-border bg-bg p-4 text-sm;
+  }
+  .prose-oj pre code {
+    @apply bg-transparent p-0 text-text;
+  }
+  .prose-oj a {
+    @apply text-accent underline hover:text-accent-hover;
+  }
+  .prose-oj blockquote {
+    @apply my-4 border-l-4 border-border pl-4 italic text-text-muted;
+  }
+  .prose-oj table {
+    @apply my-4 w-full border-collapse text-sm;
+  }
+  .prose-oj th, .prose-oj td {
+    @apply border border-border px-3 py-2 text-left;
+  }
+  .prose-oj th {
+    @apply bg-surface font-semibold;
+  }
+}

@@ -1,0 +1,92 @@
+# Production stack. Build from repo root:
+#   # 1. Build the sandbox image first (needs cdui repo staging)
+#   .\backend\docker\build_sandbox.ps1
+#   # 2. Build api/worker/frontend and start
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Set env vars via .env.prod (referenced below) or shell.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-oj}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env.prod}
+      POSTGRES_DB: ${POSTGRES_DB:-codefyui_oj}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-oj} -d ${POSTGRES_DB:-codefyui_oj}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: docker/api.Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-oj}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-codefyui_oj}
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: ${JWT_SECRET:?set in .env.prod}
+      DEBUG: "false"
+      CORS_ORIGINS: '${CORS_ORIGINS:-["https://oj.example.com"]}'
+      JUDGE_USE_DOCKER: "true"
+      SANDBOX_IMAGE: codefyui-oj-sandbox:latest
+    volumes:
+      - oj-storage:/app/storage
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8100:8000"
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: docker/worker.Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-oj}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-codefyui_oj}
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: ${JWT_SECRET}
+      JUDGE_USE_DOCKER: "true"
+      SANDBOX_IMAGE: codefyui-oj-sandbox:latest
+    volumes:
+      - oj-storage:/app/storage
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "127.0.0.1:8080:80"
+
+volumes:
+  postgres-data:
+  redis-data:
+  oj-storage:

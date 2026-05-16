@@ -1,0 +1,4 @@
+# Sandbox image installs cdui's deps at build time. This file only lists
+# what the sandbox judge needs directly. cdui's own pyproject is the source
+# of truth for ML deps (torch, sklearn, etc.) and is installed into the
+# sandbox image before COPY-ing this directory.

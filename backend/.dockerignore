@@ -1,0 +1,22 @@
+.venv
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.ruff_cache
+.mypy_cache
+.coverage
+htmlcov
+.uv-cache
+*.egg-info
+
+# dev data
+oj.db
+oj.db-journal
+storage
+sandbox_workspace
+
+.env
+.env.local
+.env.*.local
+*.log
