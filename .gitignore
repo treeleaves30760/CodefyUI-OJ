@@ -1,0 +1,64 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# uv
+.uv-cache/
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Build
+build/
+*.egg
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# OJ-specific
+submissions/         # uploaded student JSONs (local storage)
+test_data/           # hidden test files (NEVER commit)
+sandbox_workspace/   # transient judge workspaces
+problem_assets/      # uploaded problem starter/test files
+
+# DB (dev)
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+
+# Docker
+.docker/
+
+# Claude / superpowers
+.superpowers/
+.worktrees/
+.claude/
